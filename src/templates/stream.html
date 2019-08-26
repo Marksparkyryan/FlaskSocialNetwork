@@ -1,0 +1,26 @@
+
+
+{% extends "layout.html" %} {% block content %} {% for post in stream %}
+<article>
+  <h2>
+    <a href="{{ url_for('stream', username=post.user.username) }}">
+      {{ post.user.username }}
+    </a>
+  </h2>
+  {% with time = now - post.timestamp %}
+  {% if time.days %}
+  {{ time.days }} days ago
+  {% elif time.seconds//3600 %}
+  {{ time.seconds//3600 }} hours ago
+  {% elif time.seconds//60 %}
+  {{ time.seconds//60 }} minutes ago
+  {% elif time.seconds %}
+  {{ time.seconds }} seconds ago
+  {% endif %}
+  {% endwith %}
+  <a href="{{ url_for('view_post', post_id=post.id) }}" class="view">View</a>
+  <div>
+    {{ post.content }}
+  </div>
+</article>
+{% endfor %} {% endblock %}

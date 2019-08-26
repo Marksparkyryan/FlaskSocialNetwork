@@ -1,7 +1,9 @@
-from flask import (Flask, g, render_template, flash, redirect, url_for)
+import datetime
+from flask import (Flask, g, render_template, flash, redirect, url_for,
+                    abort)
 from flask_bcrypt import check_password_hash
 from flask_login import (LoginManager, login_user, logout_user, 
-                         login_required)
+                         login_required, current_user)
 
 import forms
 import models
@@ -31,6 +33,8 @@ def before_request():
     """Connect to the database before each request"""
     g.db = models.DATABASE
     g.db.connect()
+    g.user = current_user
+    g.now = datetime.datetime.now()
 
 
 @app.after_request
@@ -44,13 +48,13 @@ def after_request(response):
 def register():
     form = forms.RegisterForm()
     if form.validate_on_submit():
-        flash("Yay! You registerd!", "success")
-        models.User.create_user(
+        flash("Yay! You registered!", "success")
+        new_user = models.User.create_user(
             username=form.username.data,
             email=form.email.data,
             password=form.password.data,
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("login"))
     return render_template("register.html", form=form)
 
 
@@ -80,9 +84,95 @@ def logout():
     return redirect(url_for("index"))
 
 
+@app.route("/new_post", methods=("GET", "POST"))
+@login_required
+def new_post():
+    form = forms.PostForm()
+    if form.validate_on_submit():
+        models.Post.create(user=g.user._get_current_object(),
+                            content=form.content.data.strip())
+        flash("Message posted!", "success")
+        return redirect(url_for("index"))
+    return render_template("post.html", form=form)
+
+
+
 @app.route("/")
 def index():
-    return "Index Page"
+    stream = models.Post.select().order_by(models.Post.timestamp.desc()).limit(100)
+    return render_template("stream.html", stream=stream, now=g.now)
+
+
+@app.route("/stream")
+@app.route("/stream/<username>")
+def stream(username=None):
+    template = "stream.html"
+    if username and username != current_user.username:
+        try:
+            user = models.User.select().where(models.User.username**username).get()
+            stream = user.posts
+        except models.DoesNotExist:
+            abort(404)
+    else:
+        stream = current_user.get_stream().limit(100)
+        user = current_user
+    if username:
+        template = "user_stream.html"
+    return render_template(template, stream=stream, user=user, now=g.now)
+
+
+@app.route("/post/<int:post_id>")
+def view_post(post_id):
+    posts = models.Post.select().where(
+        models.Post.id == post_id)
+    if posts.count() == 0:
+        abort(404)
+    return render_template("stream.html", stream=posts, now=g.now)
+
+
+@app.route("/follow/<username>")
+@login_required
+def follow(username):
+    try:
+        to_user = models.User.get(models.User.username**username)
+    except models.DoesNotExist:
+        abort(404)
+    else:
+        try:
+            models.Relationship.create(
+                from_user=g.user._get_current_object(),
+                to_user=to_user,
+            )
+        except models.IntegrityError:
+            pass
+        else:
+            flash("You're now following {}".format(to_user.username), "success")
+    return redirect(url_for("stream", username=to_user.username))
+
+
+@app.route("/unfollow/<username>")
+@login_required
+def unfollow(username):
+    try:
+        to_user = models.User.get(models.User.username**username)
+    except models.DoesNotExist:
+        abort(404)
+    else:
+        try:
+            models.Relationship.get(
+                from_user=g.user._get_current_object(),
+                to_user=to_user,
+            ).delete_instance()
+        except models.IntegrityError:
+            pass
+        else:
+            flash("You've unfollowed {}".format(to_user.username), "success")
+    return redirect(url_for("stream", username=to_user.username))
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template("404.html"), 404
 
 
 if __name__ == "__main__":
@@ -90,10 +180,12 @@ if __name__ == "__main__":
     try:
         models.User.create_user(
             username="Sparky",
-            email="markryandeveloper@gmail.com",
+            email="sparky@gmail.com",
             password="password",
             admin=True
         )
     except ValueError:
         pass
     app.run(debug=DEBUG, host=HOST, port=PORT)
+
+
