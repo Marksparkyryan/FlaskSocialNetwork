@@ -8,12 +8,12 @@ from flask_login import (LoginManager, login_user, logout_user,
 import forms
 import models
 
-DEBUG = True
+DEBUG = False
 PORT = 8000
 HOST = "0.0.0.0"
 
 app = Flask(__name__)
-app.secret_key = "TS+.CnjIwuw6|&?$osVrl]_*hf~rRd6kQ:qb@CC@f81EGWX7O>JiL%LWc?VCFY5"
+app.secret_key = "Tnvisfjengrqoinrivn564184165168468161gnmwekgmaefkngawnrg"
 
 login_manager = LoginManager()
 login_manager.init_app(app)
