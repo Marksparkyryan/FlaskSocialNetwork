@@ -7,13 +7,14 @@ from flask_login import (LoginManager, login_user, logout_user,
 
 import forms
 import models
+import secret
 
 DEBUG = False
 PORT = 8000
 HOST = "0.0.0.0"
 
 app = Flask(__name__)
-app.secret_key = "Tnvisfjengrqoinrivn564184165168468161gnmwekgmaefkngawnrg"
+app.secret_key = secret.key
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -179,7 +180,7 @@ if __name__ == "__main__":
     models.initialize()
     try:
         models.User.create_user(
-            username="Sparky",
+            username="sparky",
             email="sparky@gmail.com",
             password="password",
             admin=True

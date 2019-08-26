@@ -1,3 +1,6 @@
 /socialenv
 FlaskSocial.code-workspace
 .vscode
+secret.py
+Procfile
+runtime.txt
